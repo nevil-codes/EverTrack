@@ -1,4 +1,4 @@
-#!/Users/nick/Documents/EverTrack/.venv/bin/python3.12
+#!/Users/nick/Downloads/EverTrack/.venv/bin/python3.13
 import sys
 from fontTools.merge import main
 if __name__ == '__main__':
