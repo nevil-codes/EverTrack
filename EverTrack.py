@@ -67,7 +67,7 @@ class EverTrack:
             text="EverTrack", 
             font=("Arial", 28, "bold"),
             bg="#2c3e50",
-            fg="black"
+            fg="white"
         )
         title_label.pack(pady=20)
         
@@ -101,12 +101,12 @@ class EverTrack:
         left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
         # Habit Name
-        tk.Label(left_frame, text="Habit Name:", font=("Arial", 10), bg="white").grid(row=0, column=0, sticky="w", pady=10)
+        tk.Label(left_frame, text="Habit Name:", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=0, column=0, sticky="w", pady=10)
         self.new_habit_entry = tk.Entry(left_frame, font=("Arial", 11), width=30)
         self.new_habit_entry.grid(row=0, column=1, pady=10, padx=10)
         
         # Start Date (auto-filled with current date)
-        tk.Label(left_frame, text="Start Date:", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="w", pady=10)
+        tk.Label(left_frame, text="Start Date:", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=1, column=0, sticky="w", pady=10)
         self.start_date_label = tk.Label(
             left_frame,
             text=datetime.now().strftime("%Y-%m-%d"),
@@ -117,7 +117,7 @@ class EverTrack:
         self.start_date_label.grid(row=1, column=1, pady=10, padx=10, sticky="w")
         
         # End Date (optional)
-        tk.Label(left_frame, text="End Date (Optional):", font=("Arial", 10), bg="white").grid(row=2, column=0, sticky="w", pady=10)
+        tk.Label(left_frame, text="End Date (Optional):", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=2, column=0, sticky="w", pady=10)
         
         end_date_frame = tk.Frame(left_frame, bg="white")
         end_date_frame.grid(row=2, column=1, pady=10, padx=10, sticky="w")
@@ -135,10 +135,10 @@ class EverTrack:
         
         self.end_date_entry = tk.Entry(end_date_frame, font=("Arial", 10), width=15, state="disabled")
         self.end_date_entry.pack(side="left", padx=(10, 0))
-        tk.Label(end_date_frame, text="(YYYY-MM-DD)", font=("Arial", 8), bg="white", fg="gray").pack(side="left", padx=5)
+        tk.Label(end_date_frame, text="(YYYY-MM-DD)", font=("Arial", 8), bg="white", fg="#7f8c8d").pack(side="left", padx=5)
         
         # Target per day (optional)
-        tk.Label(left_frame, text="Daily Target (min):", font=("Arial", 10), bg="white").grid(row=3, column=0, sticky="w", pady=10)
+        tk.Label(left_frame, text="Daily Target (min):", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=3, column=0, sticky="w", pady=10)
         self.target_entry = tk.Entry(left_frame, font=("Arial", 11), width=30)
         self.target_entry.grid(row=3, column=1, pady=10, padx=10)
         self.target_entry.insert(0, "30")
@@ -235,18 +235,18 @@ class EverTrack:
         input_frame.pack(fill="x", pady=(0, 20))
         
         # Habit Selection (Dropdown)
-        tk.Label(input_frame, text="Select Habit:", font=("Arial", 10), bg="white").grid(row=0, column=0, sticky="w", pady=10)
+        tk.Label(input_frame, text="Select Habit:", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=0, column=0, sticky="w", pady=10)
         self.habit_combo = ttk.Combobox(input_frame, font=("Arial", 10), width=28, state="readonly")
         self.habit_combo.grid(row=0, column=1, pady=10, padx=10)
         self.update_habit_combo()
         
         # Duration
-        tk.Label(input_frame, text="Duration (minutes):", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="w", pady=10)
+        tk.Label(input_frame, text="Duration (minutes):", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=1, column=0, sticky="w", pady=10)
         self.duration_entry = tk.Entry(input_frame, font=("Arial", 10), width=30)
         self.duration_entry.grid(row=1, column=1, pady=10, padx=10)
         
         # Completion status
-        tk.Label(input_frame, text="Completed Today:", font=("Arial", 10), bg="white").grid(row=2, column=0, sticky="w", pady=10)
+        tk.Label(input_frame, text="Completed Today:", font=("Arial", 10), bg="white", fg="#2c3e50").grid(row=2, column=0, sticky="w", pady=10)
         self.completed_var = tk.BooleanVar(value=True)
         completion_check = tk.Checkbutton(
             input_frame,
@@ -263,7 +263,7 @@ class EverTrack:
             text="Log Activity",
             command=self.add_log,
             bg="#3498db",
-            fg="black",
+            fg="white",
             font=("Arial", 11, "bold"),
             cursor="hand2",
             padx=20,
@@ -314,7 +314,7 @@ class EverTrack:
             text="Delete Selected Log",
             command=self.delete_log,
             bg="#e74c3c",
-            fg="black",
+            fg="white",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
@@ -337,6 +337,7 @@ class EverTrack:
             right_panel,
             font=("Arial", 11),
             bg="#f9f9f9",
+            fg="#2c3e50",
             relief="flat",
             wrap="word",
             height=20
@@ -361,7 +362,7 @@ class EverTrack:
             text="Bar Chart - Total Time",
             command=lambda: self.show_chart("bar"),
             bg="#3498db",
-            fg="black",
+            fg="white",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
@@ -373,7 +374,7 @@ class EverTrack:
             text="Line Chart - Progress",
             command=lambda: self.show_chart("line"),
             bg="#9b59b6",
-            fg="black",
+            fg="white",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
@@ -385,7 +386,7 @@ class EverTrack:
             text="Pie Chart - Distribution",
             command=lambda: self.show_chart("pie"),
             bg="#e67e22",
-            fg="black",
+            fg="white",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
@@ -397,7 +398,7 @@ class EverTrack:
             text="Completion Rate",
             command=lambda: self.show_chart("completion"),
             bg="#27ae60",
-            fg="black",
+            fg="white",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
@@ -746,7 +747,7 @@ class EverTrack:
         plt.tight_layout()
 
 def main():
-    root = tk.Tk()
+    root = tk.Tk()  
     app = EverTrack(root)
     root.mainloop()
 
