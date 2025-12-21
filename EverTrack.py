@@ -11,19 +11,22 @@ class EverTrack:
     def __init__(self, root):
         self.root = root
         self.root.title("EverTrack - Smart Habit Tracking")
-        self.root.geometry("1000x700")
+        self.root.geometry("1200x750")
         self.root.configure(bg="#f0f0f0")
         
-        # Data file path
+        # Data files
         self.data_file = "habits_data.json"
+        self.habits_file = "habits_list.json"
         self.habits_data = self.load_data()
+        self.habits_list = self.load_habits()
         
-        # Create main container
+        # Create main container with notebook
         self.create_ui()
-        self.refresh_table()
+        self.refresh_log_table()
+        self.refresh_habits_table()
         
     def load_data(self):
-        """Load habit data from JSON file"""
+        """Load habit log data from JSON file"""
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, 'r') as f:
@@ -32,10 +35,25 @@ class EverTrack:
                 return []
         return []
     
+    def load_habits(self):
+        """Load habits list from JSON file"""
+        if os.path.exists(self.habits_file):
+            try:
+                with open(self.habits_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return []
+        return []
+    
     def save_data(self):
-        """Save habit data to JSON file"""
+        """Save habit log data to JSON file"""
         with open(self.data_file, 'w') as f:
             json.dump(self.habits_data, f, indent=4)
+    
+    def save_habits(self):
+        """Save habits list to JSON file"""
+        with open(self.habits_file, 'w') as f:
+            json.dump(self.habits_list, f, indent=4)
     
     def create_ui(self):
         """Create the main user interface"""
@@ -53,18 +71,162 @@ class EverTrack:
         )
         title_label.pack(pady=20)
         
-        # Main content area
-        content_frame = tk.Frame(self.root, bg="#f0f0f0")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        # Notebook (Tabs)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Left panel - Input and Table
-        left_panel = tk.Frame(content_frame, bg="#f0f0f0")
+        # Create tabs
+        self.create_habits_tab()
+        self.create_log_tab()
+        self.create_analytics_tab()
+    
+    def create_habits_tab(self):
+        """Create the habits management tab"""
+        habits_tab = tk.Frame(self.notebook, bg="#f0f0f0")
+        self.notebook.add(habits_tab, text="📋 Manage Habits")
+        
+        # Main container
+        container = tk.Frame(habits_tab, bg="#f0f0f0")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Left side - Add habit
+        left_frame = tk.LabelFrame(
+            container,
+            text="Create New Habit",
+            font=("Arial", 12, "bold"),
+            bg="white",
+            padx=20,
+            pady=20
+        )
+        left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        
+        # Habit Name
+        tk.Label(left_frame, text="Habit Name:", font=("Arial", 10), bg="white").grid(row=0, column=0, sticky="w", pady=10)
+        self.new_habit_entry = tk.Entry(left_frame, font=("Arial", 11), width=30)
+        self.new_habit_entry.grid(row=0, column=1, pady=10, padx=10)
+        
+        # Start Date (auto-filled with current date)
+        tk.Label(left_frame, text="Start Date:", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="w", pady=10)
+        self.start_date_label = tk.Label(
+            left_frame,
+            text=datetime.now().strftime("%Y-%m-%d"),
+            font=("Arial", 11, "bold"),
+            bg="white",
+            fg="#27ae60"
+        )
+        self.start_date_label.grid(row=1, column=1, pady=10, padx=10, sticky="w")
+        
+        # End Date (optional)
+        tk.Label(left_frame, text="End Date (Optional):", font=("Arial", 10), bg="white").grid(row=2, column=0, sticky="w", pady=10)
+        
+        end_date_frame = tk.Frame(left_frame, bg="white")
+        end_date_frame.grid(row=2, column=1, pady=10, padx=10, sticky="w")
+        
+        self.no_limit_var = tk.BooleanVar(value=True)
+        self.no_limit_check = tk.Checkbutton(
+            end_date_frame,
+            text="No End Date",
+            variable=self.no_limit_var,
+            command=self.toggle_end_date,
+            font=("Arial", 9),
+            bg="white"
+        )
+        self.no_limit_check.pack(side="left")
+        
+        self.end_date_entry = tk.Entry(end_date_frame, font=("Arial", 10), width=15, state="disabled")
+        self.end_date_entry.pack(side="left", padx=(10, 0))
+        tk.Label(end_date_frame, text="(YYYY-MM-DD)", font=("Arial", 8), bg="white", fg="gray").pack(side="left", padx=5)
+        
+        # Target per day (optional)
+        tk.Label(left_frame, text="Daily Target (min):", font=("Arial", 10), bg="white").grid(row=3, column=0, sticky="w", pady=10)
+        self.target_entry = tk.Entry(left_frame, font=("Arial", 11), width=30)
+        self.target_entry.grid(row=3, column=1, pady=10, padx=10)
+        self.target_entry.insert(0, "30")
+        
+        # Add Button
+        add_btn = tk.Button(
+            left_frame,
+            text="Create Habit",
+            command=self.create_habit,
+            bg="#27ae60",
+            fg="black",
+            font=("Arial", 11, "bold"),
+            cursor="hand2",
+            padx=30,
+            pady=10
+        )
+        add_btn.grid(row=4, column=0, columnspan=2, pady=20)
+        
+        # Right side - Habits list
+        right_frame = tk.LabelFrame(
+            container,
+            text="Your Habits",
+            font=("Arial", 12, "bold"),
+            bg="white",
+            padx=10,
+            pady=10
+        )
+        right_frame.pack(side="right", fill="both", expand=True)
+        
+        # Scrollbar
+        scroll_y = tk.Scrollbar(right_frame)
+        scroll_y.pack(side="right", fill="y")
+        
+        # Habits Table
+        self.habits_table = ttk.Treeview(
+            right_frame,
+            columns=("Habit", "Start", "End", "Target", "Status"),
+            show="headings",
+            yscrollcommand=scroll_y.set,
+            height=15
+        )
+        scroll_y.config(command=self.habits_table.yview)
+        
+        self.habits_table.heading("Habit", text="Habit Name")
+        self.habits_table.heading("Start", text="Start Date")
+        self.habits_table.heading("End", text="End Date")
+        self.habits_table.heading("Target", text="Daily Target")
+        self.habits_table.heading("Status", text="Status")
+        
+        self.habits_table.column("Habit", width=180, anchor="w")
+        self.habits_table.column("Start", width=100, anchor="center")
+        self.habits_table.column("End", width=100, anchor="center")
+        self.habits_table.column("Target", width=100, anchor="center")
+        self.habits_table.column("Status", width=100, anchor="center")
+        
+        self.habits_table.pack(fill="both", expand=True, pady=(0, 10))
+        
+        # Delete Button
+        delete_habit_btn = tk.Button(
+            right_frame,
+            text="Delete Selected Habit",
+            command=self.delete_habit,
+            bg="#e74c3c",
+            fg="black",
+            font=("Arial", 10, "bold"),
+            cursor="hand2",
+            padx=15,
+            pady=8
+        )
+        delete_habit_btn.pack(pady=5)
+    
+    def create_log_tab(self):
+        """Create the daily log tab"""
+        log_tab = tk.Frame(self.notebook, bg="#f0f0f0")
+        self.notebook.add(log_tab, text="✓ Daily Log")
+        
+        # Main container
+        container = tk.Frame(log_tab, bg="#f0f0f0")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Left panel - Input
+        left_panel = tk.Frame(container, bg="#f0f0f0")
         left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
         # Input Section
         input_frame = tk.LabelFrame(
             left_panel, 
-            text="Add New Habit", 
+            text="Log Daily Activity", 
             font=("Arial", 12, "bold"),
             bg="white",
             padx=20,
@@ -72,34 +234,47 @@ class EverTrack:
         )
         input_frame.pack(fill="x", pady=(0, 20))
         
-        # Habit Name
-        tk.Label(input_frame, text="Habit Name:", font=("Arial", 10), bg="white", fg="black").grid(row=0, column=0, sticky="w", pady=5)
-        self.habit_entry = tk.Entry(input_frame, font=("Arial", 10), width=30)
-        self.habit_entry.grid(row=0, column=1, pady=5, padx=10)
+        # Habit Selection (Dropdown)
+        tk.Label(input_frame, text="Select Habit:", font=("Arial", 10), bg="white").grid(row=0, column=0, sticky="w", pady=10)
+        self.habit_combo = ttk.Combobox(input_frame, font=("Arial", 10), width=28, state="readonly")
+        self.habit_combo.grid(row=0, column=1, pady=10, padx=10)
+        self.update_habit_combo()
         
         # Duration
-        tk.Label(input_frame, text="Duration (minutes):", font=("Arial", 10), bg="white", fg="black").grid(row=1, column=0, sticky="w", pady=5)
+        tk.Label(input_frame, text="Duration (minutes):", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="w", pady=10)
         self.duration_entry = tk.Entry(input_frame, font=("Arial", 10), width=30)
-        self.duration_entry.grid(row=1, column=1, pady=5, padx=10)
+        self.duration_entry.grid(row=1, column=1, pady=10, padx=10)
+        
+        # Completion status
+        tk.Label(input_frame, text="Completed Today:", font=("Arial", 10), bg="white").grid(row=2, column=0, sticky="w", pady=10)
+        self.completed_var = tk.BooleanVar(value=True)
+        completion_check = tk.Checkbutton(
+            input_frame,
+            text="Yes, I completed this habit today",
+            variable=self.completed_var,
+            font=("Arial", 10),
+            bg="white"
+        )
+        completion_check.grid(row=2, column=1, pady=10, padx=10, sticky="w")
         
         # Add Button
-        add_btn = tk.Button(
+        log_btn = tk.Button(
             input_frame,
-            text="Add Habit",
-            command=self.add_habit,
-            bg="#27ae60",
+            text="Log Activity",
+            command=self.add_log,
+            bg="#3498db",
             fg="black",
             font=("Arial", 11, "bold"),
             cursor="hand2",
             padx=20,
             pady=8
         )
-        add_btn.grid(row=2, column=0, columnspan=2, pady=15)
+        log_btn.grid(row=3, column=0, columnspan=2, pady=15)
         
         # Table Section
         table_frame = tk.LabelFrame(
             left_panel,
-            text="Habit History",
+            text="Activity History",
             font=("Arial", 12, "bold"),
             bg="white",
             padx=10,
@@ -112,31 +287,32 @@ class EverTrack:
         scroll_y.pack(side="right", fill="y")
         
         # Treeview (Table)
-        self.table = ttk.Treeview(
+        self.log_table = ttk.Treeview(
             table_frame,
-            columns=("Date", "Habit", "Duration"),
+            columns=("Date", "Habit", "Duration", "Completed"),
             show="headings",
             yscrollcommand=scroll_y.set,
-            height=15
+            height=12
         )
-        scroll_y.config(command=self.table.yview)
+        scroll_y.config(command=self.log_table.yview)
         
-        # Define columns
-        self.table.heading("Date", text="Date")
-        self.table.heading("Habit", text="Habit Name")
-        self.table.heading("Duration", text="Duration (min)")
+        self.log_table.heading("Date", text="Date")
+        self.log_table.heading("Habit", text="Habit Name")
+        self.log_table.heading("Duration", text="Duration (min)")
+        self.log_table.heading("Completed", text="Completed")
         
-        self.table.column("Date", width=120, anchor="center")
-        self.table.column("Habit", width=200, anchor="w")
-        self.table.column("Duration", width=120, anchor="center")
+        self.log_table.column("Date", width=120, anchor="center")
+        self.log_table.column("Habit", width=180, anchor="w")
+        self.log_table.column("Duration", width=100, anchor="center")
+        self.log_table.column("Completed", width=100, anchor="center")
         
-        self.table.pack(fill="both", expand=True)
+        self.log_table.pack(fill="both", expand=True)
         
         # Delete Button
-        delete_btn = tk.Button(
+        delete_log_btn = tk.Button(
             left_panel,
-            text="Delete Selected",
-            command=self.delete_habit,
+            text="Delete Selected Log",
+            command=self.delete_log,
             bg="#e74c3c",
             fg="black",
             font=("Arial", 10, "bold"),
@@ -144,54 +320,92 @@ class EverTrack:
             padx=15,
             pady=5
         )
-        delete_btn.pack(pady=10)
+        delete_log_btn.pack(pady=10)
         
-        # Right panel - Charts
-        right_panel = tk.Frame(content_frame, bg="#f0f0f0", width=400)
+        # Right panel - Today's summary
+        right_panel = tk.LabelFrame(
+            container,
+            text="Today's Summary",
+            font=("Arial", 12, "bold"),
+            bg="white",
+            padx=20,
+            pady=20
+        )
         right_panel.pack(side="right", fill="both", expand=True)
         
+        self.summary_text = tk.Text(
+            right_panel,
+            font=("Arial", 11),
+            bg="#f9f9f9",
+            relief="flat",
+            wrap="word",
+            height=20
+        )
+        self.summary_text.pack(fill="both", expand=True)
+        self.update_daily_summary()
+    
+    def create_analytics_tab(self):
+        """Create the analytics tab"""
+        analytics_tab = tk.Frame(self.notebook, bg="#f0f0f0")
+        self.notebook.add(analytics_tab, text="📊 Analytics")
+        
+        container = tk.Frame(analytics_tab, bg="#f0f0f0")
+        container.pack(fill="both", expand=True, padx=20, pady=20)
+        
         # Chart buttons
-        btn_frame = tk.Frame(right_panel, bg="#f0f0f0")
+        btn_frame = tk.Frame(container, bg="#f0f0f0")
         btn_frame.pack(fill="x", pady=(0, 10))
         
         tk.Button(
             btn_frame,
-            text="Bar Chart",
+            text="Bar Chart - Total Time",
             command=lambda: self.show_chart("bar"),
             bg="#3498db",
             fg="black",
-            font=("Arial", 9, "bold"),
+            font=("Arial", 10, "bold"),
             cursor="hand2",
-            padx=10,
-            pady=5
+            padx=15,
+            pady=8
         ).pack(side="left", padx=5)
         
         tk.Button(
             btn_frame,
-            text="Line Chart",
+            text="Line Chart - Progress",
             command=lambda: self.show_chart("line"),
             bg="#9b59b6",
             fg="black",
-            font=("Arial", 9, "bold"),
+            font=("Arial", 10, "bold"),
             cursor="hand2",
-            padx=10,
-            pady=5
+            padx=15,
+            pady=8
         ).pack(side="left", padx=5)
         
         tk.Button(
             btn_frame,
-            text="Pie Chart",
+            text="Pie Chart - Distribution",
             command=lambda: self.show_chart("pie"),
             bg="#e67e22",
             fg="black",
-            font=("Arial", 9, "bold"),
+            font=("Arial", 10, "bold"),
             cursor="hand2",
-            padx=10,
-            pady=5
+            padx=15,
+            pady=8
+        ).pack(side="left", padx=5)
+        
+        tk.Button(
+            btn_frame,
+            text="Completion Rate",
+            command=lambda: self.show_chart("completion"),
+            bg="#27ae60",
+            fg="black",
+            font=("Arial", 10, "bold"),
+            cursor="hand2",
+            padx=15,
+            pady=8
         ).pack(side="left", padx=5)
         
         # Chart display area
-        self.chart_frame = tk.Frame(right_panel, bg="white", relief="solid", borderwidth=1)
+        self.chart_frame = tk.Frame(container, bg="white", relief="solid", borderwidth=1)
         self.chart_frame.pack(fill="both", expand=True)
         
         # Welcome message
@@ -200,17 +414,128 @@ class EverTrack:
             text="📊\n\nSelect a chart type above\nto visualize your habits!",
             font=("Arial", 14),
             bg="white",
-            fg="black"
+            fg="#7f8c8d"
         )
         welcome_label.pack(expand=True)
     
-    def add_habit(self):
-        """Add a new habit entry"""
-        habit_name = self.habit_entry.get().strip()
-        duration = self.duration_entry.get().strip()
+    def toggle_end_date(self):
+        """Toggle end date entry based on checkbox"""
+        if self.no_limit_var.get():
+            self.end_date_entry.config(state="disabled")
+        else:
+            self.end_date_entry.config(state="normal")
+    
+    def update_habit_combo(self):
+        """Update the habit dropdown in log tab"""
+        habit_names = [h["name"] for h in self.habits_list if h["status"] == "Active"]
+        self.habit_combo['values'] = habit_names
+        if habit_names:
+            self.habit_combo.current(0)
+    
+    def create_habit(self):
+        """Create a new habit"""
+        habit_name = self.new_habit_entry.get().strip()
         
-        if not habit_name or not duration:
-            messagebox.showwarning("Input Error", "Please fill in all fields!")
+        if not habit_name:
+            messagebox.showwarning("Input Error", "Please enter a habit name!")
+            return
+        
+        # Check if habit already exists
+        if any(h["name"].lower() == habit_name.lower() for h in self.habits_list):
+            messagebox.showerror("Duplicate Habit", "This habit already exists!")
+            return
+        
+        start_date = datetime.now().strftime("%Y-%m-%d")
+        
+        # Handle end date
+        if self.no_limit_var.get():
+            end_date = "No Limit"
+        else:
+            end_date = self.end_date_entry.get().strip()
+            if end_date:
+                try:
+                    datetime.strptime(end_date, "%Y-%m-%d")
+                except ValueError:
+                    messagebox.showerror("Invalid Date", "End date must be in YYYY-MM-DD format!")
+                    return
+            else:
+                messagebox.showwarning("Input Error", "Please enter an end date or check 'No End Date'!")
+                return
+        
+        # Handle target
+        target = self.target_entry.get().strip()
+        try:
+            target_val = int(target) if target else 0
+        except ValueError:
+            messagebox.showerror("Invalid Target", "Daily target must be a number!")
+            return
+        
+        # Create habit record
+        habit_record = {
+            "name": habit_name,
+            "start_date": start_date,
+            "end_date": end_date,
+            "daily_target": target_val,
+            "status": "Active"
+        }
+        
+        self.habits_list.append(habit_record)
+        self.save_habits()
+        self.refresh_habits_table()
+        self.update_habit_combo()
+        
+        # Clear inputs
+        self.new_habit_entry.delete(0, tk.END)
+        self.end_date_entry.delete(0, tk.END)
+        self.target_entry.delete(0, tk.END)
+        self.target_entry.insert(0, "30")
+        self.no_limit_var.set(True)
+        self.toggle_end_date()
+        
+        messagebox.showinfo("Success", f"Habit '{habit_name}' created successfully!")
+    
+    def delete_habit(self):
+        """Delete selected habit"""
+        selected = self.habits_table.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a habit to delete!")
+            return
+        
+        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this habit?\n\nThis will also delete all associated logs!"):
+            item = self.habits_table.item(selected[0])
+            habit_name = item["values"][0]
+            
+            # Remove from habits list
+            self.habits_list = [h for h in self.habits_list if h["name"] != habit_name]
+            
+            # Remove associated logs
+            self.habits_data = [log for log in self.habits_data if log["habit"] != habit_name]
+            
+            self.save_habits()
+            self.save_data()
+            self.refresh_habits_table()
+            self.refresh_log_table()
+            self.update_habit_combo()
+            self.update_daily_summary()
+            
+            messagebox.showinfo("Deleted", f"Habit '{habit_name}' and all its logs have been deleted!")
+    
+    def add_log(self):
+        """Add a new activity log"""
+        if not self.habits_list:
+            messagebox.showwarning("No Habits", "Please create a habit first in the 'Manage Habits' tab!")
+            return
+        
+        habit_name = self.habit_combo.get()
+        duration = self.duration_entry.get().strip()
+        completed = self.completed_var.get()
+        
+        if not habit_name:
+            messagebox.showwarning("Input Error", "Please select a habit!")
+            return
+        
+        if not duration:
+            messagebox.showwarning("Input Error", "Please enter duration!")
             return
         
         try:
@@ -221,46 +546,34 @@ class EverTrack:
             messagebox.showerror("Invalid Input", "Duration must be a positive number!")
             return
         
-        # Create habit record
-        habit_record = {
+        # Create log record
+        log_record = {
             "date": datetime.now().strftime("%Y-%m-%d"),
             "habit": habit_name,
-            "duration": duration
+            "duration": duration,
+            "completed": completed
         }
         
-        self.habits_data.append(habit_record)
+        self.habits_data.append(log_record)
         self.save_data()
-        self.refresh_table()
+        self.refresh_log_table()
+        self.update_daily_summary()
         
         # Clear inputs
-        self.habit_entry.delete(0, tk.END)
         self.duration_entry.delete(0, tk.END)
+        self.completed_var.set(True)
         
-        messagebox.showinfo("Success", f"Habit '{habit_name}' added successfully!")
+        messagebox.showinfo("Success", f"Activity logged for '{habit_name}'!")
     
-    def refresh_table(self):
-        """Refresh the table with current data"""
-        # Clear existing rows
-        for item in self.table.get_children():
-            self.table.delete(item)
-        
-        # Add data
-        for record in reversed(self.habits_data):
-            self.table.insert("", "end", values=(
-                record["date"],
-                record["habit"],
-                f"{record['duration']:.0f}"
-            ))
-    
-    def delete_habit(self):
-        """Delete selected habit entry"""
-        selected = self.table.selection()
+    def delete_log(self):
+        """Delete selected log entry"""
+        selected = self.log_table.selection()
         if not selected:
-            messagebox.showwarning("No Selection", "Please select a habit to delete!")
+            messagebox.showwarning("No Selection", "Please select a log to delete!")
             return
         
-        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this habit?"):
-            item = self.table.item(selected[0])
+        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this log?"):
+            item = self.log_table.item(selected[0])
             values = item["values"]
             
             # Find and remove from data
@@ -272,13 +585,71 @@ class EverTrack:
                     break
             
             self.save_data()
-            self.refresh_table()
-            messagebox.showinfo("Deleted", "Habit deleted successfully!")
+            self.refresh_log_table()
+            self.update_daily_summary()
+            messagebox.showinfo("Deleted", "Log deleted successfully!")
+    
+    def refresh_habits_table(self):
+        """Refresh the habits table"""
+        for item in self.habits_table.get_children():
+            self.habits_table.delete(item)
+        
+        for habit in self.habits_list:
+            self.habits_table.insert("", "end", values=(
+                habit["name"],
+                habit["start_date"],
+                habit["end_date"],
+                f"{habit['daily_target']} min",
+                habit["status"]
+            ))
+    
+    def refresh_log_table(self):
+        """Refresh the log table"""
+        for item in self.log_table.get_children():
+            self.log_table.delete(item)
+        
+        for record in reversed(self.habits_data):
+            completed_text = "✓ Yes" if record.get("completed", True) else "✗ No"
+            self.log_table.insert("", "end", values=(
+                record["date"],
+                record["habit"],
+                f"{record['duration']:.0f}",
+                completed_text
+            ))
+    
+    def update_daily_summary(self):
+        """Update today's summary"""
+        self.summary_text.delete(1.0, tk.END)
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        today_logs = [log for log in self.habits_data if log["date"] == today]
+        
+        if not today_logs:
+            self.summary_text.insert(1.0, f"📅 {today}\n\n" + "No activities logged today.\nStart tracking your habits!")
+            return
+        
+        summary = f"📅 {today}\n\n"
+        summary += f"Total Activities: {len(today_logs)}\n\n"
+        
+        total_time = sum(log["duration"] for log in today_logs)
+        summary += f"⏱️ Total Time: {total_time:.0f} minutes\n\n"
+        
+        completed_count = sum(1 for log in today_logs if log.get("completed", True))
+        summary += f"✓ Completed: {completed_count}/{len(today_logs)}\n\n"
+        
+        summary += "━━━━━━━━━━━━━━━━━━━\n\n"
+        summary += "📋 Today's Habits:\n\n"
+        
+        for log in today_logs:
+            status = "✓" if log.get("completed", True) else "✗"
+            summary += f"{status} {log['habit']}: {log['duration']:.0f} min\n"
+        
+        self.summary_text.insert(1.0, summary)
     
     def show_chart(self, chart_type):
         """Display the selected chart type"""
         if not self.habits_data:
-            messagebox.showinfo("No Data", "No habits to display. Add some habits first!")
+            messagebox.showinfo("No Data", "No activities to display. Log some activities first!")
             return
         
         # Clear previous chart
@@ -286,7 +657,7 @@ class EverTrack:
             widget.destroy()
         
         # Create figure
-        fig, ax = plt.subplots(figsize=(5, 4), facecolor='white')
+        fig, ax = plt.subplots(figsize=(6, 4.5), facecolor='white')
         
         if chart_type == "bar":
             self.create_bar_chart(ax)
@@ -294,6 +665,8 @@ class EverTrack:
             self.create_line_chart(ax)
         elif chart_type == "pie":
             self.create_pie_chart(ax)
+        elif chart_type == "completion":
+            self.create_completion_chart(ax)
         
         # Embed in tkinter
         canvas = FigureCanvasTkAgg(fig, self.chart_frame)
@@ -345,6 +718,31 @@ class EverTrack:
         colors = plt.cm.Pastel1(range(len(habits)))
         ax.pie(durations, labels=habits, autopct='%1.1f%%', startangle=90, colors=colors)
         ax.set_title("Time Distribution Across Habits", fontsize=12, fontweight='bold')
+        plt.tight_layout()
+    
+    def create_completion_chart(self, ax):
+        """Create completion rate chart"""
+        habit_stats = defaultdict(lambda: {"total": 0, "completed": 0})
+        
+        for record in self.habits_data:
+            habit_stats[record["habit"]]["total"] += 1
+            if record.get("completed", True):
+                habit_stats[record["habit"]]["completed"] += 1
+        
+        habits = list(habit_stats.keys())
+        completion_rates = [
+            (habit_stats[h]["completed"] / habit_stats[h]["total"] * 100)
+            for h in habits
+        ]
+        
+        colors = ['#27ae60' if rate >= 80 else '#f39c12' if rate >= 50 else '#e74c3c' 
+                  for rate in completion_rates]
+        
+        ax.barh(habits, completion_rates, color=colors, edgecolor='black', linewidth=1.2)
+        ax.set_xlabel("Completion Rate (%)", fontsize=10, fontweight='bold')
+        ax.set_ylabel("Habits", fontsize=10, fontweight='bold')
+        ax.set_title("Habit Completion Rate", fontsize=12, fontweight='bold')
+        ax.set_xlim(0, 100)
         plt.tight_layout()
 
 def main():
