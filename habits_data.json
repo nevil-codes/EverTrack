@@ -10,5 +10,12 @@
         "habit": "Meditation",
         "duration": 30,
         "completed": true
+    },
+    {
+        "date": "2025-12-21",
+        "habit": "Meditation",
+        "duration": 25.0,
+        "completed": true,
+        "notes": ""
     }
 ]

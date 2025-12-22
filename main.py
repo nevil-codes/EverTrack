@@ -1,31 +1,6 @@
-# main.py - Main entry point for EverTrack Pro
-"""
-EverTrack Pro - AI-Powered Smart Habit Tracking Application
 
-Main Features:
-- AI-powered habit creation and natural language input
-- Visual streak calendar with heatmap
-- Achievements and badges system
-- Desktop notifications and reminders
-- Dark/Light theme toggle
-- Export to CSV/PDF
-- Advanced analytics dashboard
-- Notes and reflections
-- Multi-tab interface
-
-File Structure:
-- main.py (this file) - Main application entry point
-- data_manager.py - Handles all data operations
-- ui_components.py - Reusable UI components
-- ai_coach.py - AI features and natural language processing
-- analytics.py - Charts and data visualization
-- achievements.py - Badge system and achievement tracking
-- notifications.py - Desktop notifications and reminders
-- themes.py - Theme management
-
-Author: EverTrack Development Team
-Version: 2.0 Pro
-"""
+import matplotlib
+matplotlib.use('TkAgg')
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -133,7 +108,7 @@ class EverTrackPro:
             text="🌓 Toggle Theme",
             command=self.toggle_theme,
             bg="#34495e",
-            fg="white",
+            fg="black",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
@@ -235,10 +210,8 @@ def main():
     print("Version 2.0")
     print("=" * 50)
     print("\nInitializing application...")
-    
     root = tk.Tk()
     app = EverTrackPro(root)
-    
     print("\n✓ Application started successfully!")
     print("=" * 50)
     
