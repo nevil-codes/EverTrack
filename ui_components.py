@@ -16,7 +16,7 @@ class UIComponents:
             text=text,
             command=command,
             bg=bg_color,
-            fg="white",
+            fg="black",
             font=("Arial", 10, "bold"),
             cursor="hand2",
             padx=15,
