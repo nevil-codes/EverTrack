@@ -50,8 +50,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Run it from the repository root — the app reads and writes its JSON data files
-relative to the current working directory. They are created on first run.
+Run it from the repository root — with the default JSON backend the app reads and
+writes its data files relative to the current working directory, and creates them
+on first run.
+
+### Running on SQLite
+
+```bash
+python scripts/migrate_json_to_sqlite.py --dry-run   # report what would move
+python scripts/migrate_json_to_sqlite.py             # writes evertrack.db
+python main.py --storage sqlite
+```
+
+Both backends implement the same `core.repository.Repository` interface and are
+covered by the same contract test suite, so the app behaves identically on either.
 
 ## Project layout
 
@@ -67,10 +79,17 @@ core/                 GUI-free domain layer — the tested part
   stats.py            Totals, per-habit and per-day rollups, calendar window
   parser.py           Plain-English activity parser
   achievements.py     Badge catalogue and unlock rules
+  repository.py       The storage contract every backend implements
+  json_repository.py  Backend: the original four JSON files
+  sqlite_repository.py Backend: SQLite
+  schema.sql          Tables, constraints, indexes and rollup views
   storage.py          Atomic JSON writes, corrupt files quarantined
 
+scripts/
+  migrate_json_to_sqlite.py   JSON -> SQLite migration, with a report
+
 main.py               Application entry point and window shell
-data_manager.py       Storage facade over core.storage, CRUD over habits and logs
+data_manager.py       Storage facade the UI talks to; delegates to a Repository
 ai_coach.py           Adapter: parser and coaching text for the UI
 achievements.py       Adapter: badge state for the UI
 analytics.py          Chart builders (matplotlib)
@@ -97,11 +116,14 @@ pytest
 ruff check .
 ```
 
-111 tests, no display required. They cover the parser, streak maths, achievement
-rules, record validation, atomic/corrupt-file storage behaviour and the storage
-facade — the places where bugs silently corrupted data.
+165 tests, no display required. They cover the parser, streak maths, achievement
+rules, record validation, atomic and corrupt-file storage behaviour, the schema's
+own constraints, the migration, and a contract suite run against **both** storage
+backends so they cannot drift apart.
 
-## Data files
+## Data
+
+### JSON backend (default)
 
 Created in the working directory on first run, and **not** version controlled:
 
@@ -111,6 +133,25 @@ Created in the working directory on first run, and **not** version controlled:
 | `habits_data.json` | activity log entries (date, habit, duration, completed, notes) |
 | `settings.json` | theme, notification toggle, per-habit reminder times |
 | `achievements.json` | unlocked achievement ids and total points |
+
+Writes are atomic, and a file that cannot be parsed is renamed to
+`<name>.corrupt-<timestamp>` and reported — never silently replaced with an
+empty one.
+
+### SQLite backend
+
+`core/schema.sql`: `habit`, `habit_log`, `reminder`, `achievement_unlock` and
+`setting`, plus the `v_daily` and `v_habit_totals` rollup views. Integrity is
+enforced by the database — unique habit names (case-insensitive), foreign keys
+with `ON DELETE CASCADE`, and CHECK constraints on date format, target, duration
+and reminder time.
+
+The migration reports rather than coerces. It maps the `"No Limit"` sentinel to
+`NULL`, normalizes int and float durations to `REAL`, fills in absent `notes`,
+links each log to its habit by id, and lists anything it could not migrate:
+unusable records, logs naming a habit that never existed, and reminders left
+behind by deleted habits. `total_points` is not migrated — it is derived from
+the unlocked badges instead of stored and incremented.
 
 ## Project status
 
@@ -128,7 +169,7 @@ instead of being silently replaced with an empty one; and writes are atomic.
 
 1. **Hygiene** — .gitignore, dependency pinning, license, dead code removed *(done)*
 2. **`core/` package + pytest + CI** — domain logic separated from Tkinter *(done)*
-3. **SQLite** — normalized schema behind a repository interface, plus a JSON migration
+3. **SQLite** — normalized schema behind a repository interface, plus a JSON migration *(done)*
 4. **HTTP API** — FastAPI over the same core, so the desktop app is one client of many
 5. **Docker** — containerized API with Postgres via docker compose
 

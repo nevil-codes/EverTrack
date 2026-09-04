@@ -27,12 +27,14 @@ def test_starts_empty(manager):
 
 
 def test_add_log_persists(manager, tmp_path):
+    manager.add_habit(habit_record())
     manager.add_log(log())
     on_disk = json.loads((tmp_path / "habits_data.json").read_text())
     assert on_disk == [log()]
 
 
 def test_add_log_rejects_invalid_records(manager):
+    manager.add_habit(habit_record())
     with pytest.raises(ValidationError):
         manager.add_log(log(duration=0))
     with pytest.raises(ValidationError):
@@ -48,6 +50,8 @@ def test_duplicate_habit_names_are_refused(manager):
 
 def test_delete_log_at_removes_exactly_one_duplicate(manager):
     # regression: value-matching deleted every identical row at once
+    manager.add_habit(habit_record())
+    manager.add_habit(habit_record("Reading"))
     manager.add_log(log())
     manager.add_log(log())
     manager.add_log(log(habit="Reading"))
@@ -59,6 +63,7 @@ def test_delete_log_at_removes_exactly_one_duplicate(manager):
 
 
 def test_delete_log_at_rejects_a_bad_index(manager):
+    manager.add_habit(habit_record())
     manager.add_log(log())
     assert manager.delete_log_at(5) is False
     assert len(manager.habits_data) == 1
@@ -67,6 +72,7 @@ def test_delete_log_at_rejects_a_bad_index(manager):
 def test_fractional_durations_survive_a_round_trip(manager):
     # regression: the table rounded durations for display and deletion matched
     # on the rounded value, so a 23.4-minute log could never be deleted
+    manager.add_habit(habit_record())
     manager.add_log(log(duration=23.4))
     assert manager.habits_data[0]["duration"] == 23.4
     assert manager.delete_log_at(0) is True
@@ -74,13 +80,14 @@ def test_fractional_durations_survive_a_round_trip(manager):
 
 def test_deleting_a_habit_removes_its_logs_and_its_reminder(manager):
     manager.add_habit(habit_record("Reading"))
+    manager.add_habit(habit_record("Meditation"))
     manager.set_reminder("Reading", "09:00")
     manager.add_log(log(habit="Reading"))
     manager.add_log(log(habit="Meditation"))
 
     manager.delete_habit("Reading")
 
-    assert manager.habits_list == []
+    assert [h["name"] for h in manager.habits_list] == ["Meditation"]
     assert [entry["habit"] for entry in manager.habits_data] == ["Meditation"]
     # regression: the reminder used to outlive the habit
     assert manager.settings["reminder_times"] == {}
@@ -93,17 +100,18 @@ def test_bad_reminder_times_are_refused(manager, value):
 
 
 def test_active_habits_ignore_case_in_status(manager):
-    manager.habits_list = [habit_record("A"), {**habit_record("B"), "status": "active"},
-                           {**habit_record("C"), "status": "Archived"}]
+    manager.add_habit(habit_record("A"))
+    manager.add_habit({**habit_record("B"), "status": "active"})
+    manager.add_habit({**habit_record("C"), "status": "Archived"})
     assert [h["name"] for h in manager.get_active_habits()] == ["A", "B"]
 
 
-def test_typed_views_skip_and_report_unusable_rows(manager):
-    manager.habits_data = [log(), {"habit": "broken"}]
-    records = manager.log_models()
+def test_typed_views_skip_and_report_unusable_rows(tmp_path):
+    (tmp_path / "habits_data.json").write_text(json.dumps([log(), {"habit": "broken"}]))
+    manager = DataManager(directory=str(tmp_path))
 
-    assert len(records) == 1
-    assert manager.problems and "skipped a record" in manager.problems[0]
+    assert len(manager.log_models()) == 1
+    assert any("skipped a record" in problem for problem in manager.problems)
 
 
 def test_corrupt_data_file_is_reported_at_startup(tmp_path):
@@ -115,6 +123,8 @@ def test_corrupt_data_file_is_reported_at_startup(tmp_path):
 
 
 def test_export_to_csv_writes_a_header_and_every_row(manager, tmp_path):
+    manager.add_habit(habit_record())
+    manager.add_habit(habit_record("Reading"))
     manager.add_log(log())
     manager.add_log(log(habit="Reading", completed=False))
 

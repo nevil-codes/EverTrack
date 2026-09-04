@@ -47,6 +47,5 @@ class ThemeManager:
     def toggle_theme(self):
         """Toggle between light and dark theme"""
         self.current_theme = "light" if self.current_theme == "dark" else "dark"
-        self.data_manager.settings["theme"] = self.current_theme
-        self.data_manager.save_json(self.data_manager.settings_file, self.data_manager.settings)
+        self.data_manager.set_setting("theme", self.current_theme)
         self.apply_theme()
