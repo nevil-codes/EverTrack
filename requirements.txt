@@ -1,0 +1,5 @@
+# Direct runtime dependencies.
+# Tkinter is part of the standard library but requires a system Tk install
+# (macOS: bundled with python.org / Homebrew python-tk; Debian/Ubuntu: apt install python3-tk).
+matplotlib==3.10.8
+reportlab==4.4.7

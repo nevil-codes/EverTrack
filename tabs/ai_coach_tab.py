@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import scrolledtext
 
 class AICoachTab:
-    """AI Coach tab for personalized insights"""
+    """Rule-based coach tab: rolled-up stats and static habit guidance"""
     
     def __init__(self, notebook, app):
         self.app = app
@@ -24,7 +24,7 @@ class AICoachTab:
         
         tk.Label(
             header,
-            text="🤖 Your Personal AI Habit Coach",
+            text="🧭 Your Habit Coach",
             font=("Arial", 20, "bold"),
             bg="#8e44ad",
             fg="black"
@@ -57,7 +57,7 @@ class AICoachTab:
         # AI Response area
         response_frame = tk.LabelFrame(
             container,
-            text="AI Insights",
+            text="Insights",
             font=("Arial", 12, "bold"),
             bg=theme["panel_bg"],
             fg=theme["fg"],
@@ -97,7 +97,7 @@ class AICoachTab:
         
         tk.Button(
             query_frame,
-            text="Ask AI",
+            text="Ask",
             command=self.custom_query,
             bg="#9b59b6",
             fg="black",
@@ -109,7 +109,7 @@ class AICoachTab:
     
     def show_welcome_message(self):
         """Show welcome message"""
-        welcome = """👋 Welcome to Your AI Habit Coach!
+        welcome = """👋 Welcome to Your Habit Coach!
 
 I'm here to help you build better habits and reach your goals. Here's what I can do:
 

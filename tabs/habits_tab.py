@@ -19,7 +19,7 @@ class HabitsTab:
         container.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Left side - Create habit
-        left_frame = self.app.ui.create_label_frame(container, "Create New Habit (AI-Assisted)")
+        left_frame = self.app.ui.create_label_frame(container, "Create New Habit")
         left_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
         # AI Quick Setup
@@ -28,7 +28,7 @@ class HabitsTab:
         
         tk.Label(
             ai_frame,
-            text="🤖 AI Quick Setup",
+            text="⚡ Quick Setup",
             font=("Arial", 10, "bold"),
             bg="#e8f4f8",
             fg="#2c3e50"
@@ -36,7 +36,7 @@ class HabitsTab:
         
         tk.Label(
             ai_frame,
-            text="Tell AI your goal (e.g., 'I want to read more'):",
+            text="Describe your goal (e.g., 'I want to read more'):",
             font=("Arial", 9),
             bg="#e8f4f8",
             fg="#34495e"
@@ -47,7 +47,7 @@ class HabitsTab:
         
         tk.Button(
             ai_frame,
-            text="🤖 Get AI Suggestions",
+            text="⚡ Suggest a habit",
             command=self.ai_suggest_habit,
             bg="#3498db",
             fg="black",
@@ -154,7 +154,7 @@ class HabitsTab:
         delete_btn.pack(pady=5)
     
     def ai_suggest_habit(self):
-        """Get AI habit suggestions"""
+        """Fill the form from a keyword-matched habit suggestion"""
         goal = self.ai_goal_entry.get().strip()
         if not goal:
             messagebox.showwarning("Input Required", "Please describe your goal!")
@@ -168,7 +168,7 @@ class HabitsTab:
         self.target_entry.insert(0, str(suggestion['target']))
         
         messagebox.showinfo(
-            "AI Suggestion",
+            "Suggested Habit",
             f"✨ Based on your goal:\n\n"
             f"Habit: {suggestion['name']}\n"
             f"Target: {suggestion['target']} min\n"

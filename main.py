@@ -28,7 +28,7 @@ class EverTrackPro:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("EverTrack Pro - AI-Powered Smart Habit Tracking")
+        self.root.title("EverTrack Pro - Smart Habit Tracking")
         self.root.geometry("1300x800")
         
         # Initialize managers
@@ -84,7 +84,7 @@ class EverTrackPro:
         # App title
         title_label = tk.Label(
             title_frame,
-            text="EverTrack Pro 🤖✨",
+            text="EverTrack Pro ✨",
             font=("Arial", 28, "bold"),
             bg="#2c3e50",
             fg="white"
@@ -148,7 +148,7 @@ class EverTrackPro:
         """Create the AI coach tab"""
         from tabs.ai_coach_tab import AICoachTab
         ai_coach_tab = AICoachTab(self.notebook, self)
-        self.notebook.add(ai_coach_tab.frame, text="🤖 AI Coach")
+        self.notebook.add(ai_coach_tab.frame, text="🧭 Coach")
         self.ai_coach_tab = ai_coach_tab
     
     def create_analytics_tab(self):
@@ -206,7 +206,7 @@ class EverTrackPro:
 def main():
     """Main entry point for the application"""
     print("=" * 50)
-    print("EverTrack Pro - AI-Powered Habit Tracker")
+    print("EverTrack Pro - Habit Tracker")
     print("Version 2.0")
     print("=" * 50)
     print("\nInitializing application...")
