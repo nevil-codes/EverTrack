@@ -1,0 +1,2 @@
+# PostgreSQL driver. SQLite needs nothing: it is in the standard library.
+psycopg[binary]==3.2.12

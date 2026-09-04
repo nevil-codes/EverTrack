@@ -2,6 +2,7 @@
 
 If SQLite and JSON ever disagree about what storage means, these fail.
 """
+import os
 from datetime import date
 
 import pytest
@@ -12,15 +13,49 @@ from core.sqlite_repository import SqliteRepository
 
 TODAY = date(2026, 9, 4)
 
+# Set EVERTRACK_TEST_DATABASE_URL to a scratch PostgreSQL database and the whole
+# suite runs against that backend too. CI does; locally it is skipped.
+POSTGRES_URL = os.environ.get("EVERTRACK_TEST_DATABASE_URL")
 
-@pytest.fixture(params=["json", "sqlite"])
-def repo(request, tmp_path):
+
+@pytest.fixture(params=["json", "sqlite", "postgres"])
+def open_repo(request, tmp_path):
+    """A factory that opens the same store again, so reconnection can be tested."""
     if request.param == "json":
-        backend = JsonRepository(tmp_path)
+        def factory():
+            return JsonRepository(tmp_path)
+    elif request.param == "sqlite":
+        def factory():
+            return SqliteRepository(tmp_path / "evertrack.db")
     else:
-        backend = SqliteRepository(tmp_path / "evertrack.db")
-    yield backend
-    backend.close()
+        if not POSTGRES_URL:
+            pytest.skip("EVERTRACK_TEST_DATABASE_URL is not set")
+        from core.postgres_repository import PostgresRepository
+
+        def factory():
+            return PostgresRepository(POSTGRES_URL)
+
+        cleaner = factory()
+        cleaner.clear_all()
+        cleaner.save_settings({"theme": "light", "notifications": True, "reminder_times": {}})
+        cleaner.close()
+
+    opened = []
+
+    def open_one():
+        backend = factory()
+        opened.append(backend)
+        return backend
+
+    yield open_one
+
+    for backend in opened:
+        backend.close()
+
+
+@pytest.fixture
+def repo(open_repo):
+    return open_repo()
 
 
 def habit(name="Meditation", target=30, status="Active", end=None):
@@ -149,3 +184,28 @@ def test_habit_names_are_matched_case_insensitively_when_logging(repo):
     repo.add_habit(habit("Reading"))
     stored = repo.add_log(entry("reading"))
     assert stored.id is not None
+
+
+def test_writes_survive_a_reconnect(open_repo):
+    """Regression: a psycopg connection without autocommit turned every
+    transaction() block after the first read into a nested savepoint, so writes
+    were discarded when the connection closed."""
+    first = open_repo()
+    first.add_habit(habit("Reading"))
+    first.list_logs()                      # a read, before the write below
+    stored = first.add_log(entry("Reading", duration=42.0))
+    first.set_unlocked(["first_log"])
+    first.save_settings({"theme": "dark", "notifications": True,
+                         "reminder_times": {"Reading": "08:15"}})
+    first.close()
+
+    second = open_repo()
+    assert [h.name for h in second.list_habits()] == ["Reading"]
+    assert [log.duration_min for log in second.list_logs()] == [42.0]
+    assert second.get_unlocked() == ["first_log"]
+    assert second.get_settings()["reminder_times"] == {"Reading": "08:15"}
+
+    assert second.delete_log(stored.id) is True
+    second.close()
+
+    assert open_repo().list_logs() == []

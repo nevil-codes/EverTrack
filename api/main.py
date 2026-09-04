@@ -43,7 +43,11 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["meta"], summary="Liveness probe")
     def health() -> dict:
-        return {"status": "ok", "version": config.version, "database": config.database}
+        return {
+            "status": "ok",
+            "version": config.version,
+            "database": config.safe_database_url,
+        }
 
     app.include_router(habits.router)
     app.include_router(logs.router)

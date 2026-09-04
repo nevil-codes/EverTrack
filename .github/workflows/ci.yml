@@ -13,6 +13,24 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
 
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: evertrack
+          POSTGRES_PASSWORD: evertrack
+          POSTGRES_DB: evertrack_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U evertrack"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      EVERTRACK_TEST_DATABASE_URL: postgresql://evertrack:evertrack@localhost:5432/evertrack_test
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,13 +48,14 @@ jobs:
         run: ruff check .
 
       - name: Test
+        # Runs the repository contract suite against JSON, SQLite and PostgreSQL
         run: pytest
 
       - name: Import the GUI modules headlessly
         # Catches import-time breakage in the Tk layer without needing a display
         run: xvfb-run -a python -c "import main"
 
-      - name: Smoke test the API
+      - name: Smoke test the API on SQLite
         run: |
           python scripts/seed_demo_data.py --database ci.db
           uvicorn api.main:app --port 8000 &
@@ -45,3 +64,31 @@ jobs:
           curl -sf localhost:8000/stats/streak
         env:
           EVERTRACK_DB: ci.db
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t evertrack-api .
+
+      - name: Bring the stack up and exercise it
+        run: |
+          docker compose up -d --wait
+          curl -sf localhost:8000/health
+          curl -sf -X POST localhost:8000/habits \
+            -H 'content-type: application/json' \
+            -d '{"name":"Reading","daily_target_min":30}'
+          curl -sf -X POST localhost:8000/logs/parse \
+            -H 'content-type: application/json' \
+            -d '{"text":"read for 30 minutes","commit":true}'
+          curl -sf localhost:8000/stats/streak
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
