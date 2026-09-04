@@ -182,11 +182,7 @@ class SettingsTab:
 
     def toggle_notifications(self):
         """Toggle notifications on/off"""
-        self.app.data_manager.settings["notifications"] = self.notif_var.get()
-        self.app.data_manager.save_json(
-            self.app.data_manager.settings_file,
-            self.app.data_manager.settings
-        )
+        self.app.data_manager.set_setting("notifications", self.notif_var.get())
 
         status = "enabled" if self.notif_var.get() else "disabled"
         messagebox.showinfo("Notifications", f"Notifications {status}!")
@@ -297,15 +293,9 @@ class SettingsTab:
                 import os
                 os.makedirs(backup_path, exist_ok=True)
 
-                # Copy all JSON files
-                files = [
-                    self.app.data_manager.data_file,
-                    self.app.data_manager.habits_file,
-                    self.app.data_manager.settings_file,
-                    self.app.data_manager.achievements_file
-                ]
-
-                for file in files:
+                # Whatever the current backend stores: four JSON files, or one
+                # SQLite database.
+                for file in self.app.data_manager.backup_paths():
                     if os.path.exists(file):
                         shutil.copy(file, backup_path)
 
@@ -334,19 +324,11 @@ class SettingsTab:
             )
 
             if double_confirm:
-                data_manager = self.app.data_manager
-                data_manager.habits_data = []
-                data_manager.habits_list = []
-                data_manager.achievements = {"unlocked": [], "total_points": 0}
-                # The dialog promises settings are cleared too: keep the current
-                # theme (the window is already drawn in it) and reset the rest,
-                # including reminders for habits that no longer exist.
-                data_manager.settings = {
-                    "theme": self.app.theme_manager.get_current_theme(),
-                    "notifications": True,
-                    "reminder_times": {},
-                }
-                data_manager.save_all()
+                # The dialog promises settings are cleared too; the current theme
+                # is kept because the window is already drawn in it.
+                self.app.data_manager.clear_all(
+                    keep_theme=self.app.theme_manager.get_current_theme()
+                )
 
                 self.app.refresh_all()
 

@@ -3,6 +3,7 @@ import matplotlib
 
 matplotlib.use('TkAgg')
 
+import argparse
 import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -25,13 +26,13 @@ except ImportError as e:
 class EverTrackPro:
     """Main application class for EverTrack Pro"""
 
-    def __init__(self, root):
+    def __init__(self, root, data_manager=None):
         self.root = root
         self.root.title("EverTrack Pro - Smart Habit Tracking")
         self.root.geometry("1300x800")
 
         # Initialize managers
-        self.data_manager = DataManager()
+        self.data_manager = data_manager or DataManager()
         self.theme_manager = ThemeManager(self.root, self.data_manager)
         self.ui = UIComponents(self.root, self.theme_manager)
         self.ai_coach = AICoach(self.data_manager)
@@ -219,19 +220,45 @@ class EverTrackPro:
         self.points_label.config(text=f"🏆 {points} Points")
 
 
-def main():
+def build_data_manager(argv=None):
+    """Choose a storage backend from the command line."""
+    parser = argparse.ArgumentParser(description="EverTrack Pro")
+    parser.add_argument(
+        "--storage", choices=("json", "sqlite"), default="json",
+        help="where to keep data: the original JSON files (default) or a SQLite database"
+    )
+    parser.add_argument(
+        "--database", default="evertrack.db",
+        help="SQLite database path, used with --storage sqlite (default: evertrack.db)"
+    )
+    args = parser.parse_args(argv)
+
+    if args.storage == "sqlite":
+        print(f"storage: SQLite ({args.database})")
+        return DataManager.sqlite(args.database)
+
+    print("storage: JSON files in the current directory")
+    return DataManager()
+
+
+def main(argv=None):
     """Main entry point for the application"""
     print("=" * 50)
     print("EverTrack Pro - Habit Tracker")
     print("Version 2.0 (core refactor)")
     print("=" * 50)
     print("\nInitializing application...")
+
+    data_manager = build_data_manager(argv)
     root = tk.Tk()
-    EverTrackPro(root)
+    EverTrackPro(root, data_manager)
     print("\n✓ Application started successfully!")
     print("=" * 50)
 
-    root.mainloop()
+    try:
+        root.mainloop()
+    finally:
+        data_manager.close()
 
 
 if __name__ == "__main__":

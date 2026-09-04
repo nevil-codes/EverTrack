@@ -17,19 +17,15 @@ class AchievementSystem:
 
     def check_all_achievements(self):
         """Unlock everything newly earned; return the achievements unlocked now."""
-        store = self.data_manager.achievements
-        unlocked = list(store.get("unlocked", []))
+        unlocked = self.data_manager.get_unlocked()
 
         earned = core_achievements.newly_unlocked(
             self.data_manager.log_models(), self.data_manager.habit_models(), unlocked
         )
-        unlocked.extend(earned)
-
-        store["unlocked"] = unlocked
-        # Points are derived, never incremented, so they cannot drift from the
-        # list of unlocked badges.
-        store["total_points"] = core_achievements.total_points(unlocked)
-        self.data_manager.save_json(self.data_manager.achievements_file, store)
+        if earned:
+            # Points are derived from this list, never incremented, so they
+            # cannot drift from the badges actually held.
+            self.data_manager.set_unlocked(unlocked + earned)
 
         return [self.all_achievements[code] for code in earned]
 
@@ -47,12 +43,12 @@ class AchievementSystem:
         return longest_streak([log.log_date for log in self.data_manager.log_models()])
 
     def get_total_points(self):
-        return core_achievements.total_points(self.data_manager.achievements.get("unlocked", []))
+        return core_achievements.total_points(self.data_manager.get_unlocked())
 
     def get_unlocked_achievements(self):
-        codes = self.data_manager.achievements.get("unlocked", [])
+        codes = self.data_manager.get_unlocked()
         return [self.all_achievements[code] for code in codes if code in self.all_achievements]
 
     def get_locked_achievements(self):
-        codes = set(self.data_manager.achievements.get("unlocked", []))
+        codes = set(self.data_manager.get_unlocked())
         return [info for code, info in self.all_achievements.items() if code not in codes]

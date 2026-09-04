@@ -21,6 +21,7 @@ class Habit:
     daily_target_min: int
     end_date: date | None = None
     status: str = "Active"
+    id: int | None = None  # assigned by the repository; never written to JSON
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
@@ -80,6 +81,7 @@ class LogEntry:
     duration_min: float
     completed: bool = True
     notes: str = ""
+    id: int | None = None  # assigned by the repository; never written to JSON
 
     def __post_init__(self) -> None:
         if not self.habit or not self.habit.strip():
