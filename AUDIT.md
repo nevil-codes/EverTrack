@@ -4,6 +4,12 @@
 **Scope:** full read-only pass over all tracked Python, JSON, Markdown and git metadata.
 **Audience note:** recommendations are weighted toward MLOps / data-engineering signal (SQL, Docker, FastAPI), not toward more features.
 
+> **Status:** this document describes the repository as audited at `40401f5`. Roadmap
+> steps 0 and 1 have since landed: the virtualenv, caches and dead monolith are gone,
+> the domain logic now lives in `core/` behind a test suite, and the correctness bugs
+> in §3.1–§3.5 marked as fixed in `readme.md` are closed. The findings are kept
+> unedited as the record of what was there.
+
 ---
 
 ## 0. Snapshot
