@@ -19,6 +19,10 @@ evertrack_env312/
 *.db
 *.sqlite3
 
+# Parquet output
+warehouse/
+*.parquet
+
 # Local application data — created on first run, not version controlled
 habits_data.json
 habits_list.json
