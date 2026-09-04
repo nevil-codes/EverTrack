@@ -14,3 +14,5 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 # Tk callbacks and widget construction read better with the app's own style
 "tabs/*.py" = ["E402"]
+# FastAPI's Depends()/Query() in parameter defaults is the framework's own idiom
+"api/**/*.py" = ["B008"]

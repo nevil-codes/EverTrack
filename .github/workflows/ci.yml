@@ -35,3 +35,13 @@ jobs:
       - name: Import the GUI modules headlessly
         # Catches import-time breakage in the Tk layer without needing a display
         run: xvfb-run -a python -c "import main"
+
+      - name: Smoke test the API
+        run: |
+          python scripts/seed_demo_data.py --database ci.db
+          uvicorn api.main:app --port 8000 &
+          for i in $(seq 1 30); do curl -sf localhost:8000/health && break; sleep 1; done
+          curl -sf localhost:8000/habits | head -c 200
+          curl -sf localhost:8000/stats/streak
+        env:
+          EVERTRACK_DB: ci.db
