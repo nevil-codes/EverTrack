@@ -1,4 +1,5 @@
 from core.factory import describe, repository_from_url
+from core.json_repository import JsonRepository
 from core.sqlite_repository import SqliteRepository
 
 
@@ -12,6 +13,18 @@ def test_sqlite_url_scheme(tmp_path):
     repository = repository_from_url(f"sqlite:///{tmp_path / 'x.db'}")
     assert isinstance(repository, SqliteRepository)
     assert repository.path.name == "x.db"
+    repository.close()
+
+
+def test_a_directory_is_the_json_store(tmp_path):
+    repository = repository_from_url(str(tmp_path))
+    assert isinstance(repository, JsonRepository)
+    repository.close()
+
+
+def test_json_url_scheme(tmp_path):
+    repository = repository_from_url(f"json://{tmp_path}")
+    assert isinstance(repository, JsonRepository)
     repository.close()
 
 

@@ -17,6 +17,7 @@ and see where your time actually goes.
 - **Reminders** — per-habit reminder times, shown as in-app notifications
 - **Export** — CSV export, PDF report, and a full backup of your data
 - **HTTP API** — the same data over FastAPI, with OpenAPI docs
+- **Analytics export** — validated Parquet dataset for analysis
 
 Everything runs offline. Data lives in JSON files next to the application, in
 SQLite, or in PostgreSQL — the same code takes any of the three.
@@ -141,6 +142,73 @@ with the dialect it deserves: identity columns, real `DATE`, `BOOLEAN` and
 habit names, a regex `CHECK` on reminder times, and `COUNT(*) FILTER (WHERE …)`
 in the rollup views.
 
+## Analytics export
+
+A batch job that reads the operational store and publishes a partitioned Parquet
+dataset — extract, transform, **validate**, load, with the validation step able
+to stop the run.
+
+```bash
+pip install -r requirements-pipeline.txt
+python -m pipeline.run --source evertrack.db --out warehouse
+python -m pipeline.run --source . --dry-run          # validate the JSON store, write nothing
+python -m pipeline.run --fail-on warn                # treat warnings as failures
+```
+
+Exit codes: `0` published, `1` blocked by data quality.
+
+```
+warehouse/
+  _manifest.json                                   run id, timings, row counts, quality report
+  dim_habit/part-0.parquet                         one row per habit
+  fact_habit_log/year=2026/month=09/part-0.parquet one row per logged activity
+```
+
+`fact_habit_log` is at log grain and carries the columns an analyst reaches for
+first — `iso_week`, `weekday`, `is_weekend`, `met_target`,
+`days_since_habit_start`, `has_notes` — and is partitioned by year and month, so
+filtering one month reads one file. Both tables are written under a **declared**
+Arrow schema, not an inferred one: an empty run still produces the right
+columns, and a type that drifts fails at the boundary rather than downstream.
+
+### Data quality
+
+Thirteen expectations, each with a severity. `error` means the dataset is wrong
+and nothing is published; `warn` is recorded in the manifest and the run
+continues.
+
+| Expectation | Severity |
+|---|---|
+| `habit_key`, `log_date`, `duration_min` not null | error |
+| `0 < duration ≤ 1440` minutes | error |
+| nothing logged in the future | error |
+| every fact row joins to `dim_habit` | error |
+| one row per habit in `dim_habit`, positive target, end date after start | error |
+| activity falls on or after the habit's start date | warn |
+| no two identical entries for one habit and day | warn |
+| a habit's daily total fits in 24 hours | warn |
+| something logged in the last 7 days | warn |
+
+Failures name the offending rows:
+
+```
+data quality — fact_habit_log
+  [PASS] duration_within_bounds: 0/5 rows
+  [FAIL] log_date_not_in_the_future: 1/5 rows
+           2026-09-07 Reading 20.0min
+  [FAIL] habit_key_resolves: 1/5 rows
+           2026-09-04 Ghost 10.0min
+  [WARN] no_duplicate_entries: 1/5 rows
+           2026-09-04 Reading 30.0min
+
+not published: data quality gate failed
+```
+
+The checks earn their keep against the JSON backend, which has no constraints of
+its own — a hand-edited file is exactly where an orphan or a future date comes
+from. Against PostgreSQL most of the `error` checks are already guaranteed by
+the schema, and the job proves it rather than assuming it.
+
 ### Moving data between backends
 
 Both sides are only a `Repository`, so copying is generic:
@@ -163,6 +231,13 @@ api/                  FastAPI service over the same core
   deps.py             Request-scoped repository
   schemas.py          Pydantic request/response models
   routers/            habits, logs, stats, achievements
+
+pipeline/             Batch export to Parquet
+  extract.py          Reads any backend through core.repository
+  transform.py        dim_habit and fact_habit_log, under declared Arrow schemas
+  quality.py          Expectations, severities, and the report
+  load.py             Partitioned Parquet writer and the run manifest
+  run.py              CLI: extract -> transform -> validate -> load
 
 migrations/           Plain SQL migrations for PostgreSQL
 Dockerfile            Multi-stage build for the API, non-root runtime
@@ -217,11 +292,11 @@ pytest
 ruff check .
 ```
 
-228 tests, no display required. They cover the parser, streak maths, achievement
+252 tests, no display required. They cover the parser, streak maths, achievement
 rules, record validation, atomic and corrupt-file storage behaviour, the schema's
 own constraints, both migrations, every API endpoint including its error cases,
-and a contract suite run against **all three** storage backends so they cannot
-drift apart.
+the export pipeline end to end, and a contract suite run against **all three**
+storage backends so they cannot drift apart.
 
 The PostgreSQL tests are skipped unless a scratch database is available:
 
@@ -283,8 +358,9 @@ instead of being silently replaced with an empty one; and writes are atomic.
 3. **SQLite** — normalized schema behind a repository interface, plus a JSON migration *(done)*
 4. **HTTP API** — FastAPI over the same core *(done)*
 5. **Docker** — containerized API with PostgreSQL via docker compose *(done)*
-6. **Next** — a scheduled export to Parquet with data-quality checks, or
-   observability (structured logs, Prometheus metrics). One, finished.
+6. **Analytics export** — partitioned Parquet with data-quality gates *(done)*
+7. **Next** — orchestrate the export on a schedule, or add observability
+   (structured logs, Prometheus metrics). One, finished.
 
 ## License
 

@@ -55,6 +55,13 @@ jobs:
         # Catches import-time breakage in the Tk layer without needing a display
         run: xvfb-run -a python -c "import main"
 
+      - name: Run the Parquet export end to end
+        run: |
+          python scripts/seed_demo_data.py --database pipeline.db --days 70
+          python -m pipeline.run --source pipeline.db --out warehouse
+          test -f warehouse/_manifest.json
+          find warehouse -name '*.parquet' | head
+
       - name: Smoke test the API on SQLite
         run: |
           python scripts/seed_demo_data.py --database ci.db

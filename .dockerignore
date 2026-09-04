@@ -10,6 +10,8 @@ __pycache__
 .ruff_cache
 tests
 tabs
+warehouse
+pipeline
 main.py
 data_manager.py
 achievements.py
