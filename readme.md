@@ -15,9 +15,11 @@ and see where your time actually goes.
 - **Analytics** — bar, line, pie, completion-rate and weekly-comparison charts (matplotlib)
 - **Themes** — light and dark
 - **Reminders** — per-habit reminder times, shown as in-app notifications
-- **Export** — CSV export, PDF report, and a full backup of your data files
+- **Export** — CSV export, PDF report, and a full backup of your data
+- **HTTP API** — the same data over FastAPI, with OpenAPI docs
 
-Everything runs offline. Data is stored in JSON files next to the application.
+Everything runs offline. Data lives in JSON files next to the application, or in
+SQLite — the app takes either.
 
 ## A note on the "Coach"
 
@@ -65,6 +67,39 @@ python main.py --storage sqlite
 Both backends implement the same `core.repository.Repository` interface and are
 covered by the same contract test suite, so the app behaves identically on either.
 
+## HTTP API
+
+The desktop app is one client of the domain layer, not the only one. The same
+`core/` package and the same SQLite database are served over HTTP by FastAPI:
+
+```bash
+pip install -r requirements-api.txt
+python scripts/seed_demo_data.py --database demo.db    # optional sample data
+EVERTRACK_DB=demo.db uvicorn api.main:app --reload
+```
+
+Interactive docs at <http://localhost:8000/docs>, schema at `/openapi.json`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/health` | liveness, version, database in use |
+| `GET` `POST` | `/habits` | list (optionally `?active_only=true`), create |
+| `GET` `DELETE` | `/habits/{name}` | fetch or delete one (deleting cascades to its logs and reminder) |
+| `GET` `POST` | `/logs` | list (`?habit=`, `?from=`, `?to=`, `?limit=`), create |
+| `POST` | `/logs/parse` | parse plain English; `"commit": true` also stores it |
+| `DELETE` | `/logs/{id}` | delete one entry by id |
+| `GET` | `/stats/summary` | activities, minutes, completion rate, active days |
+| `GET` | `/stats/streak` | current, longest, and whether today is still empty |
+| `GET` | `/stats/daily` | per-day rollup, oldest first |
+| `GET` | `/stats/habits` | per-habit totals and completion rate |
+| `GET` | `/stats/weekly` | minutes per week (`?weeks=`) |
+| `GET` `POST` | `/achievements`, `/achievements/refresh` | badges held; re-evaluate the rules |
+
+Validation is Pydantic at the edge and `core.models` underneath, so the API
+refuses what the desktop app refuses: durations outside 0–1440 minutes, future
+log dates, end dates before start dates, duplicate habit names (`409`), and logs
+naming a habit that does not exist (`404`).
+
 ## Project layout
 
 The domain logic lives in `core/`, which imports neither tkinter nor matplotlib:
@@ -72,6 +107,13 @@ it can be imported, tested and reused without a display. Everything else is the
 desktop client on top of it.
 
 ```
+api/                  FastAPI service over the same core
+  main.py             App factory, OpenAPI metadata, domain error handling
+  config.py           Settings from the environment (EVERTRACK_DB)
+  deps.py             Request-scoped repository
+  schemas.py          Pydantic request/response models
+  routers/            habits, logs, stats, achievements
+
 core/                 GUI-free domain layer — the tested part
   models.py           Habit and LogEntry records, validation, JSON round-trip
   dates.py            ISO date parsing with useful errors
@@ -87,6 +129,7 @@ core/                 GUI-free domain layer — the tested part
 
 scripts/
   migrate_json_to_sqlite.py   JSON -> SQLite migration, with a report
+  seed_demo_data.py           Sample data for demos and CI
 
 main.py               Application entry point and window shell
 data_manager.py       Storage facade the UI talks to; delegates to a Repository
@@ -116,10 +159,10 @@ pytest
 ruff check .
 ```
 
-165 tests, no display required. They cover the parser, streak maths, achievement
+201 tests, no display required. They cover the parser, streak maths, achievement
 rules, record validation, atomic and corrupt-file storage behaviour, the schema's
-own constraints, the migration, and a contract suite run against **both** storage
-backends so they cannot drift apart.
+own constraints, the migration, every API endpoint including its error cases, and
+a contract suite run against **both** storage backends so they cannot drift apart.
 
 ## Data
 
@@ -170,7 +213,7 @@ instead of being silently replaced with an empty one; and writes are atomic.
 1. **Hygiene** — .gitignore, dependency pinning, license, dead code removed *(done)*
 2. **`core/` package + pytest + CI** — domain logic separated from Tkinter *(done)*
 3. **SQLite** — normalized schema behind a repository interface, plus a JSON migration *(done)*
-4. **HTTP API** — FastAPI over the same core, so the desktop app is one client of many
+4. **HTTP API** — FastAPI over the same core *(done)*
 5. **Docker** — containerized API with Postgres via docker compose
 
 ## License
