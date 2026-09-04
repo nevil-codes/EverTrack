@@ -18,8 +18,8 @@ and see where your time actually goes.
 - **Export** — CSV export, PDF report, and a full backup of your data
 - **HTTP API** — the same data over FastAPI, with OpenAPI docs
 
-Everything runs offline. Data lives in JSON files next to the application, or in
-SQLite — the app takes either.
+Everything runs offline. Data lives in JSON files next to the application, in
+SQLite, or in PostgreSQL — the same code takes any of the three.
 
 ## A note on the "Coach"
 
@@ -70,7 +70,7 @@ covered by the same contract test suite, so the app behaves identically on eithe
 ## HTTP API
 
 The desktop app is one client of the domain layer, not the only one. The same
-`core/` package and the same SQLite database are served over HTTP by FastAPI:
+`core/` package and the same database are served over HTTP by FastAPI:
 
 ```bash
 pip install -r requirements-api.txt
@@ -100,6 +100,56 @@ refuses what the desktop app refuses: durations outside 0–1440 minutes, future
 log dates, end dates before start dates, duplicate habit names (`409`), and logs
 naming a habit that does not exist (`404`).
 
+## Docker and PostgreSQL
+
+```bash
+docker compose up --build
+curl localhost:8000/health
+```
+
+Three services: `db` (PostgreSQL 17), `migrate` (applies the SQL migrations and
+exits), and `api` (waits for the migration to succeed, then serves on `:8000`).
+The image is multi-stage — wheels are built in one stage, and the runtime stage
+ships only the domain layer, the API, the migrations and a non-root user.
+
+### Storage selection
+
+| Environment | Backend |
+|---|---|
+| `EVERTRACK_DATABASE_URL=postgresql://user:pass@host:5432/evertrack` | PostgreSQL |
+| `EVERTRACK_DB=evertrack.db` (or nothing) | SQLite |
+
+`core.factory.repository_from_url` resolves either, so the API, the desktop app
+and the scripts all take the same input.
+
+### Migrations
+
+Plain `.sql` files in `migrations/`, applied in filename order, each in its own
+transaction and recorded in `schema_migrations` with a checksum. Editing a file
+that has already been applied is refused — migrations are immutable, and the
+fix is a new file.
+
+```bash
+python scripts/migrate_postgres.py --status
+python scripts/migrate_postgres.py --dry-run
+python scripts/migrate_postgres.py
+```
+
+The PostgreSQL schema (`migrations/001_initial_schema.sql`) is the SQLite one
+with the dialect it deserves: identity columns, real `DATE`, `BOOLEAN` and
+`JSONB` types, a functional unique index on `lower(name)` for case-insensitive
+habit names, a regex `CHECK` on reminder times, and `COUNT(*) FILTER (WHERE …)`
+in the rollup views.
+
+### Moving data between backends
+
+Both sides are only a `Repository`, so copying is generic:
+
+```bash
+python scripts/copy_store.py --from evertrack.db \
+    --to postgresql://evertrack:evertrack@localhost:5432/evertrack --wipe
+```
+
 ## Project layout
 
 The domain logic lives in `core/`, which imports neither tkinter nor matplotlib:
@@ -114,6 +164,10 @@ api/                  FastAPI service over the same core
   schemas.py          Pydantic request/response models
   routers/            habits, logs, stats, achievements
 
+migrations/           Plain SQL migrations for PostgreSQL
+Dockerfile            Multi-stage build for the API, non-root runtime
+docker-compose.yml    db + migrate + api
+
 core/                 GUI-free domain layer — the tested part
   models.py           Habit and LogEntry records, validation, JSON round-trip
   dates.py            ISO date parsing with useful errors
@@ -124,11 +178,15 @@ core/                 GUI-free domain layer — the tested part
   repository.py       The storage contract every backend implements
   json_repository.py  Backend: the original four JSON files
   sqlite_repository.py Backend: SQLite
-  schema.sql          Tables, constraints, indexes and rollup views
+  postgres_repository.py Backend: PostgreSQL on psycopg 3
+  factory.py          Resolves a URL or path to a backend
+  schema.sql          SQLite tables, constraints, indexes and rollup views
   storage.py          Atomic JSON writes, corrupt files quarantined
 
 scripts/
   migrate_json_to_sqlite.py   JSON -> SQLite migration, with a report
+  migrate_postgres.py         Applies migrations/*.sql, tracks them, refuses edits
+  copy_store.py               Copies any backend into any other
   seed_demo_data.py           Sample data for demos and CI
 
 main.py               Application entry point and window shell
@@ -159,10 +217,20 @@ pytest
 ruff check .
 ```
 
-201 tests, no display required. They cover the parser, streak maths, achievement
+228 tests, no display required. They cover the parser, streak maths, achievement
 rules, record validation, atomic and corrupt-file storage behaviour, the schema's
-own constraints, the migration, every API endpoint including its error cases, and
-a contract suite run against **both** storage backends so they cannot drift apart.
+own constraints, both migrations, every API endpoint including its error cases,
+and a contract suite run against **all three** storage backends so they cannot
+drift apart.
+
+The PostgreSQL tests are skipped unless a scratch database is available:
+
+```bash
+EVERTRACK_TEST_DATABASE_URL=postgresql://evertrack:evertrack@localhost:5432/evertrack_test pytest
+```
+
+CI runs them with a PostgreSQL service container, and builds and exercises the
+Docker stack in a separate job.
 
 ## Data
 
@@ -214,7 +282,9 @@ instead of being silently replaced with an empty one; and writes are atomic.
 2. **`core/` package + pytest + CI** — domain logic separated from Tkinter *(done)*
 3. **SQLite** — normalized schema behind a repository interface, plus a JSON migration *(done)*
 4. **HTTP API** — FastAPI over the same core *(done)*
-5. **Docker** — containerized API with Postgres via docker compose
+5. **Docker** — containerized API with PostgreSQL via docker compose *(done)*
+6. **Next** — a scheduled export to Parquet with data-quality checks, or
+   observability (structured logs, Prometheus metrics). One, finished.
 
 ## License
 
