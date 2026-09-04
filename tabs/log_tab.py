@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 
 class LogTab:
-    """Daily log tab with AI natural language input"""
+    """Daily log tab with plain-English quick entry"""
     
     def __init__(self, notebook, app):
         self.app = app
@@ -25,7 +25,7 @@ class LogTab:
         # AI Natural Language Input
         ai_frame = tk.LabelFrame(
             left_panel,
-            text="🤖 AI Natural Language Input",
+            text="⌨️ Quick Entry (plain English)",
             font=("Arial", 12, "bold"),
             bg="#e8f4f8",
             padx=20,
@@ -56,7 +56,7 @@ class LogTab:
         
         tk.Button(
             ai_frame,
-            text="🤖 Parse & Log",
+            text="⌨️ Parse & Log",
             command=self.parse_and_log,
             bg="#9b59b6",
             fg="black",

@@ -1,0 +1,39 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+evertrack_env312/
+
+# Packaging / tooling
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Databases (v2)
+*.db
+*.sqlite3
+
+# Local application data — created on first run, not version controlled
+habits_data.json
+habits_list.json
+settings.json
+achievements.json
+
+# Exports produced by the app
+evertrack_data_*.csv
+evertrack_report_*.pdf
+evertrack_backup_*/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Project write-up (not source)
+*.docx
